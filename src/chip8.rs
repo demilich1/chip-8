@@ -1,10 +1,12 @@
 use rom::Rom;
 use mem::Memory;
+use screen::Screen;
 
 const ROM_START_OFFSET: u16 = 0x200;
 const REGISTERS: usize = 16;
 
 pub struct Chip8 {
+    screen: Screen,
     memory: Memory,
     regs: [u8; REGISTERS],
     pc: u16,
@@ -16,6 +18,7 @@ pub struct Chip8 {
 impl Chip8 {
     pub fn new() -> Self {
         Chip8 {
+            screen: Screen::new(),
             memory: Memory::new(),
             regs: [0; REGISTERS],
             pc: 0,
