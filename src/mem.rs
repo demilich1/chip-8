@@ -14,11 +14,15 @@ impl Memory {
     pub fn load_data(&mut self, data: Vec<u8>, offset: u16) {
         for i in 0..data.len() {
             let addr = offset + i as u16;
-            self.store(addr, data[i]);
+            self.set(addr, data[i]);
         }
     }
 
-    pub fn store(&mut self, addr: u16, value: u8) {
+    pub fn set(&mut self, addr: u16, value: u8) {
         self.memory[addr as usize] = value;
+    }
+
+    pub fn get(&self, addr: u16) -> u8 {
+        self.memory[addr as usize]
     }
 }

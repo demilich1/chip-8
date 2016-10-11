@@ -12,4 +12,8 @@ fn main() {
     chip8.init();
 
     chip8.load_rom(rom);
+
+    for i in 0..3 {
+        chip8.run_cycle();
+    }
 }
