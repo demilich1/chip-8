@@ -5,13 +5,21 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
 use std::thread;
-use std::thread::JoinHandle;
+
+use std::sync::mpsc::channel;
+use std::sync::mpsc::Sender;
 
 pub struct Screen {
+    tx: Sender<ScreenSignal>
+}
+
+enum ScreenSignal {
+    ClearScreen,
 }
 
 impl Screen {
     pub fn new() -> Self {
+        let (tx, rx) = channel();
         let thread = thread::spawn(move || {
             let sdl_context = sdl2::init().unwrap();
             let video_subsystem = sdl_context.video().unwrap();
@@ -40,8 +48,9 @@ impl Screen {
                 // The rest of the game loop goes here...
             }
         });
-        //thread.join();
+
         Screen {
+            tx: tx
         }
     }
 
