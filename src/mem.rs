@@ -11,7 +11,7 @@ impl Memory {
         }
     }
 
-    pub fn load_data(&mut self, data: Vec<u8>, offset: u16) {
+    pub fn load_data(&mut self, data: &[u8], offset: u16) {
         for i in 0..data.len() {
             let addr = offset + i as u16;
             self.set(addr, data[i]);

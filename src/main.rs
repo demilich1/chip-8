@@ -4,6 +4,7 @@ mod chip8;
 mod rom;
 mod mem;
 mod screen;
+mod opcode;
 
 use chip8::Chip8;
 use rom::Rom;
@@ -18,6 +19,6 @@ fn main() {
 
     for i in 0..200 {
         chip8.run_cycle();
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        std::thread::sleep(std::time::Duration::from_millis(16));
     }
 }
