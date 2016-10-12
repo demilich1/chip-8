@@ -1,6 +1,6 @@
 use rom::Rom;
 use mem::Memory;
-use screen::Screen;
+use screen::{Screen, ScreenBuffer};
 
 const ROM_START_OFFSET: u16 = 0x200;
 const REGISTERS: usize = 16;
@@ -42,6 +42,9 @@ impl Chip8 {
         let opcode_raw = self.fetch_opcode();
 
         println!("Fetched opcode 0x{:X} at PC {:?}", opcode_raw, self.pc);
+        let mut screen_buffer = ScreenBuffer::new();
+        screen_buffer.set_pixel(10, 10);
+        self.screen.draw(screen_buffer);
 
         self.pc += 1;
     }
