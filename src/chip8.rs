@@ -2,6 +2,9 @@ use rom::Rom;
 use mem::Memory;
 use screen::{Screen, ScreenBuffer};
 
+use opcode;
+use opcode::OpCode;
+
 const FONT_START_OFFSET: u16 = 0x050;
 const ROM_START_OFFSET: u16 = 0x200;
 const REGISTERS: usize = 16;
@@ -63,8 +66,9 @@ impl Chip8 {
     pub fn run_cycle(&mut self) {
         // fetch opcode
         let opcode_raw = self.fetch_opcode();
+        let opcode = opcode::decode(opcode_raw);
 
-        println!("Fetched opcode 0x{:X} at PC 0x{:X}", opcode_raw, self.pc);
+        println!("Fetched opcode {:?} at PC 0x{:X}", opcode, self.pc);
         let mut screen_buffer = ScreenBuffer::new();
         screen_buffer.set_pixel(10, 10);
         self.screen.draw(screen_buffer);
