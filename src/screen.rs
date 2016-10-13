@@ -50,6 +50,7 @@ impl ScreenBuffer {
 
 enum ScreenSignal {
     Draw { pixels: ScreenBuffer },
+    Clear
 }
 
 impl Screen {
@@ -103,9 +104,9 @@ impl Screen {
     fn process_signal(renderer: &mut Renderer, signal: ScreenSignal) {
         renderer.set_draw_color(Color::RGB(15, 15, 15));
         renderer.clear();
-        renderer.set_draw_color(Color::RGB(255, 255, 255));
         match signal {
             ScreenSignal::Draw { pixels } => {
+                renderer.set_draw_color(Color::RGB(255, 255, 255));
                 for px in 0..pixels.width() {
                     for py in 0..pixels.height() {
                         if !pixels.get_pixel(px, py) {
@@ -118,6 +119,7 @@ impl Screen {
                     }
                 }
             }
+            ScreenSignal::Clear => ()
         }
         renderer.present();
     }
