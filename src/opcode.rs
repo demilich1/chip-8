@@ -1,6 +1,6 @@
 #[derive(Debug)]
 pub enum OpCode {
-    SYS, // 0nnn; System call (ignored)
+    SYS {addr: u16}, // 0nnn; System call (ignored)
     CLR, // 00E0; Clear the screen
     RET, // 00EE; Return from subroutine
     JUMP { addr: u16 }, // 1nnn; Jump to address nnn
@@ -42,6 +42,7 @@ pub fn decode(val: u16) -> OpCode {
             match get_n234(val) {
                 0x00E0 => OpCode::CLR,
                 0x00EE => OpCode::RET,
+                0x0000 => OpCode::SYS{addr: get_n234(val)},
                 _ => panic!("Invalid OpCode 0x{:X}", val),
             }
         }
@@ -94,12 +95,12 @@ pub fn decode(val: u16) -> OpCode {
 
 #[inline]
 fn get_n2(opcode : u16) -> u8 {
-    (opcode >> 2 & 0x000F) as u8
+    (opcode >> 8 & 0x000F) as u8
 }
 
 #[inline]
 fn get_n3(opcode : u16) -> u8 {
-    (opcode >> 1 & 0x000F) as u8
+    (opcode >> 4 & 0x000F) as u8
 }
 
 #[inline]

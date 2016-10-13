@@ -19,6 +19,7 @@ pub struct Screen {
     tx: Sender<ScreenSignal>,
 }
 
+#[derive(Clone)]
 pub struct ScreenBuffer {
     pixels: Vec<bool>,
 }
@@ -35,6 +36,13 @@ impl ScreenBuffer {
 
     pub fn height(&self) -> u32 {
         SCREEN_HEIGHT
+    }
+
+    pub fn xor(&mut self, x: u32, y: u32) -> bool {
+        let index: usize = (x * SCREEN_HEIGHT + y) as usize;
+        let result = self.pixels[index];
+        self.pixels[index] ^= true;
+        result
     }
 
     pub fn set_pixel(&mut self, x: u32, y: u32) {
@@ -103,7 +111,6 @@ impl Screen {
 
     fn process_signal(renderer: &mut Renderer, signal: ScreenSignal) {
         renderer.set_draw_color(Color::RGB(15, 15, 15));
-        renderer.clear();
         match signal {
             ScreenSignal::Draw { pixels } => {
                 renderer.set_draw_color(Color::RGB(255, 255, 255));
@@ -124,8 +131,11 @@ impl Screen {
         renderer.present();
     }
 
-
     pub fn draw(&mut self, buffer: ScreenBuffer) {
         self.tx.send(ScreenSignal::Draw { pixels: buffer });
+    }
+
+    pub fn clear(&mut self) {
+        self.tx.send(ScreenSignal::Clear);
     }
 }
