@@ -3,10 +3,15 @@ use rand::distributions::{IndependentSample, Range};
 
 use rom::Rom;
 use mem::Memory;
-use screen::{Screen, ScreenBuffer};
+use screen::Screen;
+use screen_buffer::ScreenBuffer;
+use keys::Keys;
 
 use opcode;
 use opcode::OpCode;
+
+pub const SCREEN_WIDTH: u16 = 64;
+pub const SCREEN_HEIGHT: u16 = 32;
 
 const FONT_START_OFFSET: u16 = 0x050;
 const ROM_START_OFFSET: u16 = 0x200;
@@ -45,25 +50,29 @@ pub struct Chip8 {
     sp: u16, // stack pointer
     pc: u16, // program counter
     i_reg: u16, // index register
+    keys: Keys,
+    redraw: bool,
     delay_timer: u8,
     sound_timer: u8,
-    step: u32
+    step: u32,
 }
 
 impl Chip8 {
     pub fn new() -> Self {
         Chip8 {
-            screen: Screen::new(),
+            screen: Screen::new(SCREEN_WIDTH, SCREEN_HEIGHT),
             memory: Memory::new(),
             regs: [0; REGISTERS],
             stack: [0; STACK_SIZE],
-            screen_buffer: ScreenBuffer::new(),
+            screen_buffer: ScreenBuffer::new(SCREEN_WIDTH, SCREEN_HEIGHT),
             sp: 0,
             pc: 0,
             i_reg: 0,
+            keys: Keys::new(),
+            redraw: false,
             delay_timer: 0,
             sound_timer: 0,
-            step: 0
+            step: 0,
         }
     }
 
@@ -82,18 +91,32 @@ impl Chip8 {
         self.step += 1;
         let opcode_raw = self.fetch_opcode();
         let opcode = opcode::decode(opcode_raw);
-        println!("Step {:?}: Fetched opcode {:?} at PC 0x{:X}", self.step, &opcode, self.pc);
+        //println!("Step {:?}: Fetched opcode {:?} at PC 0x{:X}",
+        //         self.step,
+        //         &opcode,
+        //         self.pc);
 
         // each instruction is two bytes; increment before execution of opcode
         // which allows overwrite of the pc in opcode execution
         self.pc += 2;
         self.execute_opcode(opcode);
 
+        self.keys = self.screen.poll_keys();
+
+        if self.redraw {
+            self.screen.draw(&self.screen_buffer);
+            self.redraw = false;
+        }
+
         if self.delay_timer > 0 {
             self.delay_timer -= 1;
         }
         if self.sound_timer > 0 {
             self.sound_timer -= 1;
+        }
+
+        if self.screen.quit() {
+            panic!("Quitting...");
         }
     }
 
@@ -139,84 +162,84 @@ impl Chip8 {
             OpCode::BCD { s } => self.bcd(s),
             OpCode::STOR { s } => self.stor(s),
             OpCode::READ { s } => self.read(s),
-            //_ => panic!("opcode {:?} not implemented yet", opcode),
+            // _ => panic!("opcode {:?} not implemented yet", opcode),
         };
     }
 
-    fn sys(&self, addr: u16)  {
+    fn sys(&self, addr: u16) {
         println!("Ignoring opcode SYS to addr {:?}", addr);
     }
 
-    fn clr(&mut self)  {
+    fn clr(&mut self) {
         println!("Clearing screen");
         self.screen_buffer.clear();
-        self.screen.clear();
+        self.redraw = true;
     }
 
-    fn ret(&mut self)  {
+    fn ret(&mut self) {
         self.sp -= 1;
         self.pc = self.stack[self.sp as usize];
     }
 
-    fn jump(&mut self, addr: u16)  {
+    fn jump(&mut self, addr: u16) {
         self.pc = addr;
     }
 
-    fn call(&mut self, addr: u16)  {
+    fn call(&mut self, addr: u16) {
         self.stack[self.sp as usize] = self.pc;
         self.sp += 1;
         self.pc = addr;
     }
 
-    fn ske(&mut self, s: u8, nn: u8)  {
+    fn ske(&mut self, s: u8, nn: u8) {
         if self.regs[s as usize] == nn {
             self.pc += 2;
         }
     }
 
-    fn skne(&mut self, s: u8, nn: u8)  {
+    fn skne(&mut self, s: u8, nn: u8) {
         if self.regs[s as usize] != nn {
             self.pc += 2;
         }
     }
 
-    fn skre(&mut self, s: u8, t: u8)  {
+    fn skre(&mut self, s: u8, t: u8) {
         if self.regs[s as usize] == self.regs[t as usize] {
             self.pc += 2;
         }
     }
 
-    fn skrne(&mut self, s: u8, t: u8)  {
+    fn skrne(&mut self, s: u8, t: u8) {
         if self.regs[s as usize] != self.regs[t as usize] {
             self.pc += 2;
         }
     }
 
-    fn load(&mut self, s: u8, nn: u8)  {
+    fn load(&mut self, s: u8, nn: u8) {
         self.regs[s as usize] = nn;
     }
 
-    fn add(&mut self, s: u8, nn: u8)  {
+    fn add(&mut self, s: u8, nn: u8) {
         self.regs[s as usize] = self.regs[s as usize].wrapping_add(nn);
     }
 
-    fn move_reg(&mut self, s: u8, t: u8)  {
+    fn move_reg(&mut self, s: u8, t: u8) {
         self.regs[s as usize] = self.regs[t as usize];
     }
 
-    fn or(&mut self, s: u8, t: u8)  {
+    fn or(&mut self, s: u8, t: u8) {
         self.regs[s as usize] = self.regs[s as usize] | self.regs[t as usize];
     }
 
-    fn and(&mut self, s: u8, t: u8)  {
+    fn and(&mut self, s: u8, t: u8) {
         self.regs[s as usize] = self.regs[s as usize] & self.regs[t as usize];
     }
 
-    fn xor(&mut self, s: u8, t: u8)  {
+    fn xor(&mut self, s: u8, t: u8) {
         self.regs[s as usize] = self.regs[s as usize] ^ self.regs[t as usize];
     }
 
-    fn addr(&mut self, s: u8, t: u8)  {
+    fn addr(&mut self, s: u8, t: u8) {
         let s_val = self.regs[s as usize];
         let t_val = self.regs[t as usize];
         // first perform a checked addition
@@ -234,7 +257,7 @@ impl Chip8 {
         };
     }
 
-    fn sub(&mut self, s: u8, t: u8)  {
+    fn sub(&mut self, s: u8, t: u8) {
         let s_val = self.regs[s as usize];
         let t_val = self.regs[t as usize];
         // first perform a checked addition
@@ -252,36 +275,36 @@ impl Chip8 {
         };
     }
 
-    fn shr(&mut self, s: u8)  {
+    fn shr(&mut self, s: u8) {
         let s_val = self.regs[s as usize];
         self.regs[REG_F] = s_val & 0x1;
         self.regs[s as usize] >>= 1;
     }
 
-    fn shl(&mut self, s: u8)  {
+    fn shl(&mut self, s: u8) {
         let s_val = self.regs[s as usize];
         self.regs[REG_F] = s_val >> 7;;
         self.regs[s as usize] <<= 1;
     }
 
-    fn loadi(&mut self, addr: u16)  {
+    fn loadi(&mut self, addr: u16) {
         self.i_reg = addr;
     }
 
-    fn jumpi(&mut self, addr: u16)  {
+    fn jumpi(&mut self, addr: u16) {
         self.pc = self.regs[0] as u16 + addr;
     }
 
-    fn rand(&mut self, t: u8, nn: u8)  {
+    fn rand(&mut self, t: u8, nn: u8) {
         let between = Range::new(0, nn);
         let mut rng = rand::thread_rng();
         self.regs[t as usize] = between.ind_sample(&mut rng);
     }
 
-    fn draw(&mut self, s: u8, t: u8, n: u8)  {
-        let sx = self.regs[s as usize];
-        let sy = self.regs[t as usize];
-        //println!("Base Sprite at {:?}, {:?}...", sx, sy);
+    fn draw(&mut self, s: u8, t: u8, n: u8) {
+        let sx = self.regs[s as usize] as u16;
+        let sy = self.regs[t as usize] as u16;
+        // println!("Base Sprite at {:?}, {:?}...", sx, sy);
 
         self.regs[REG_F] = 0;
         for y_line in 0..n {
@@ -290,9 +313,9 @@ impl Chip8 {
                 match pixel_row & (0x80 >> x_line) {
                     0 => (),
                     _ => {
-                        let x = (sx + x_line) as u32;
-                        let y = (sy + y_line) as u32;
-                        //println!("Drawing at {:?}, {:?}...", x, y);
+                        let x = sx + x_line as u16;
+                        let y = sy + y_line as u16;
+                        // println!("Drawing at {:?}, {:?}...", x, y);
                         if self.screen_buffer.xor(x, y) {
                             self.regs[REG_F] = 1;
                         }
@@ -300,57 +323,62 @@ impl Chip8 {
                 };
             }
         }
-        self.screen.draw(self.screen_buffer.clone());
+        self.redraw = true;
     }
 
-    fn skp(&mut self, s: u8)  {
-        //TODO: implement
+    fn skp(&mut self, s: u8) {
+        let key = self.regs[s as usize];
+        if self.keys.get(key) {
+            self.pc += 2;
+        }
     }
 
-    fn sknp(&mut self, s: u8)  {
-        //TODO: implement
-        self.pc += 2;
+    fn sknp(&mut self, s: u8) {
+        let key = self.regs[s as usize];
+        if !self.keys.get(key) {
+            self.pc += 2;
+        }
     }
 
-    fn moved(&mut self, t: u8)  {
+    fn moved(&mut self, t: u8) {
         self.regs[t as usize] = self.delay_timer;
     }
 
-    fn keyd(&mut self, t: u8)  {
+    fn keyd(&mut self, t: u8) {
         unimplemented!()
     }
 
-    fn loadd(&mut self, s: u8)  {
+    fn loadd(&mut self, s: u8) {
         self.delay_timer = self.regs[s as usize];
     }
 
-    fn loads(&mut self, s: u8)  {
+    fn loads(&mut self, s: u8) {
         self.sound_timer = self.regs[s as usize];
     }
 
-    fn addi(&mut self, s: u8)  {
+    fn addi(&mut self, s: u8) {
         self.i_reg = self.i_reg.wrapping_add(self.regs[s as usize] as u16) & 0xFFF;
     }
 
-    fn ldspr(&mut self, s: u8)  {
-        self.i_reg = (self.regs[s as usize] as u16 * 5) & 0xFFF;
+    fn ldspr(&mut self, s: u8) {
+        self.i_reg = FONT_START_OFFSET + (self.regs[s as usize] as u16 * 5) & 0xFFF;
     }
 
-    fn bcd(&mut self, s: u8)  {
+    fn bcd(&mut self, s: u8) {
         let vx = self.regs[s as usize];
         self.memory.set(self.i_reg, (vx / 100) as u8);
         self.memory.set(self.i_reg + 1, ((vx / 10) % 10) as u8);
         self.memory.set(self.i_reg + 2, ((vx % 100) % 10) as u8);
     }
 
-    fn stor(&mut self, s: u8)  {
-        for i in 0..self.regs[s as usize] as u16 {
+    fn stor(&mut self, s: u8) {
+        for i in 0..s as u16 {
             self.memory.set(self.i_reg + i, self.regs[i as usize]);
         }
     }
 
-    fn read(&mut self, s: u8)  {
-        for i in 0..self.regs[s as usize] as u16 {
+    fn read(&mut self, s: u8) {
+        for i in 0..s as u16 {
             self.regs[i as usize] = self.memory.get(self.i_reg + i);
         }
     }
