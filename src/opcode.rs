@@ -19,7 +19,7 @@ pub enum OpCode {
     SHR { s: u8 }, // 8s06; Shift bits in register s 1 bit to the right - bit 0 shifts to register F
     SHL { s: u8 }, // 8s0E; Shift bits in register s 1 bit to the left - bit 7 shifts to register F
     SKRNE { s: u8, t: u8 }, // 9st0; Skip next instruction if register s not equal register t
-    LOADI { nnn: u16 }, // Annn; Load index with value nnn
+    LOADI { addr: u16 }, // Annn; Load index with value nnn
     JUMPI { addr: u16 }, // Bnnn; Jump to address nnn + index
     RAND { t: u8, nn: u8 }, // Ctnn; Generate random number between 0 and nn and store in t
     DRAW { s: u8, t: u8, n: u8 }, // Dstn; Draw n byte sprite at x location reg s, y location reg t
@@ -69,7 +69,7 @@ pub fn decode(val: u16) -> OpCode {
             }
         },
         0x9000 => OpCode::SKRNE { s: get_n2(val), t: get_n3(val) },
-        0xA000 => OpCode::LOADI { nnn: get_n234(val) },
+        0xA000 => OpCode::LOADI { addr: get_n234(val) },
         0xB000 => OpCode::JUMPI { addr: get_n234(val) },
         0xC000 => OpCode::RAND { t: get_n2(val), nn: get_n34(val) },
         0xD000 => OpCode::DRAW { s: get_n2(val), t: get_n3(val), n: get_n4(val) },
