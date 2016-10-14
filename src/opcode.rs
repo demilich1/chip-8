@@ -21,10 +21,10 @@ pub enum OpCode {
     SKRNE { s: u8, t: u8 }, // 9st0; Skip next instruction if register s not equal register t
     LOADI { addr: u16 }, // Annn; Load index with value nnn
     JUMPI { addr: u16 }, // Bnnn; Jump to address nnn + index
-    RAND { t: u8, nn: u8 }, // Ctnn; Generate random number between 0 and nn and store in t
+    RAND { s: u8, nn: u8 }, // Ctnn; Generate random number between 0 and nn and store in t
     DRAW { s: u8, t: u8, n: u8 }, // Dstn; Draw n byte sprite at x location reg s, y location reg t
-    MOVED { t: u8 }, // Ft07; Move delay timer value into register t
-    KEYD { t: u8 }, // Ft0A; Wait for keypress and store in register t
+    MOVED { s: u8 }, // Fs07; Move delay timer value into register s
+    KEYD { s: u8 }, // Fs0A; Wait for keypress and store in register s
     LOADD { s: u8 }, // Fs15; Load delay timer with value in register s
     LOADS { s: u8 }, // Fs18; Load sound timer with value in register s
     ADDI { s: u8 }, // Fs1E; Add value in register s to index
@@ -42,8 +42,7 @@ pub fn decode(val: u16) -> OpCode {
             match get_n234(val) {
                 0x00E0 => OpCode::CLR,
                 0x00EE => OpCode::RET,
-                0x0000 => OpCode::SYS{addr: get_n234(val)},
-                _ => panic!("Invalid OpCode 0x{:X}", val),
+                _ => OpCode::SYS{addr: get_n234(val)},
             }
         }
         0x1000 => OpCode::JUMP { addr: get_n234(val) },
@@ -54,24 +53,24 @@ pub fn decode(val: u16) -> OpCode {
         0x6000 => OpCode::LOAD { s: get_n2(val) as u8, nn: get_n34(val) },
         0x7000 => OpCode::ADD { s: get_n2(val) as u8, nn: get_n34(val) },
         0x8000 => {
-            let last_nibble = val & 0x000F;
             let s = get_n2(val);
             let t = get_n3(val);
-            match last_nibble {
-                0 => OpCode::MOVE {s: s, t: t},
-                1 => OpCode::OR {s: s, t: t},
-                2 => OpCode::AND {s: s, t: t},
-                3 => OpCode::XOR {s: s, t: t},
-                4 => OpCode::ADDR {s: s, t: t},
-                5 => OpCode::SUB {s: s, t: t},
-                6 => OpCode::SHR {s: s},
+            match get_n4(val) {
+                0x00 => OpCode::MOVE {s: s, t: t},
+                0x01 => OpCode::OR {s: s, t: t},
+                0x02 => OpCode::AND {s: s, t: t},
+                0x03 => OpCode::XOR {s: s, t: t},
+                0x04 => OpCode::ADDR {s: s, t: t},
+                0x05 => OpCode::SUB {s: s, t: t},
+                0x06 => OpCode::SHR {s: s},
+                0x0E => OpCode::SHL {s: s},
                 _ => panic!("Invalid OpCode 0x{:X}", val),
             }
         },
         0x9000 => OpCode::SKRNE { s: get_n2(val), t: get_n3(val) },
         0xA000 => OpCode::LOADI { addr: get_n234(val) },
         0xB000 => OpCode::JUMPI { addr: get_n234(val) },
-        0xC000 => OpCode::RAND { t: get_n2(val), nn: get_n34(val) },
+        0xC000 => OpCode::RAND { s: get_n2(val), nn: get_n34(val) },
         0xD000 => OpCode::DRAW { s: get_n2(val), t: get_n3(val), n: get_n4(val) },
         0xF000 => {
             let n34 = get_n34(val);

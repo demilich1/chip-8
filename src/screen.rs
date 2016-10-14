@@ -38,6 +38,12 @@ impl ScreenBuffer {
         SCREEN_HEIGHT
     }
 
+    pub fn clear(&mut self) {
+        for i in 0..self.pixels.len() {
+            self.pixels[i] = false;
+        }
+    }
+
     pub fn xor(&mut self, x: u32, y: u32) -> bool {
         let index: usize = (x * SCREEN_HEIGHT + y) as usize;
         let result = self.pixels[index];
@@ -58,7 +64,7 @@ impl ScreenBuffer {
 
 enum ScreenSignal {
     Draw { pixels: ScreenBuffer },
-    Clear
+    Clear,
 }
 
 impl Screen {
@@ -126,7 +132,7 @@ impl Screen {
                     }
                 }
             }
-            ScreenSignal::Clear => ()
+            ScreenSignal::Clear => (),
         }
         renderer.present();
     }

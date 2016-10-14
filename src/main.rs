@@ -18,8 +18,8 @@ fn main() {
 
     chip8.load_rom(rom);
 
-    for i in 0..200 {
+    for _i in 0..1024 {
         chip8.run_cycle();
-        std::thread::sleep(std::time::Duration::from_millis(16));
+        std::thread::sleep(std::time::Duration::from_millis(10));
     }
 }
