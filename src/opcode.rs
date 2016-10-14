@@ -23,6 +23,8 @@ pub enum OpCode {
     JUMPI { addr: u16 }, // Bnnn; Jump to address nnn + index
     RAND { s: u8, nn: u8 }, // Ctnn; Generate random number between 0 and nn and store in t
     DRAW { s: u8, t: u8, n: u8 }, // Dstn; Draw n byte sprite at x location reg s, y location reg t
+    SKP {s: u8}, // Es9E; Skip next instruction if key with the value of s is pressed
+    SKNP {s: u8}, // EsA1; Skip next instruction if key with the value of s is not pressed
     MOVED { s: u8 }, // Fs07; Move delay timer value into register s
     KEYD { s: u8 }, // Fs0A; Wait for keypress and store in register s
     LOADD { s: u8 }, // Fs15; Load delay timer with value in register s
@@ -39,7 +41,7 @@ pub fn decode(val: u16) -> OpCode {
     let first_nibble = val & 0xF000;
     match first_nibble {
         0x0000 => {
-            match get_n234(val) {
+            match get_n34(val) {
                 0x00E0 => OpCode::CLR,
                 0x00EE => OpCode::RET,
                 _ => OpCode::SYS{addr: get_n234(val)},
@@ -72,12 +74,20 @@ pub fn decode(val: u16) -> OpCode {
         0xB000 => OpCode::JUMPI { addr: get_n234(val) },
         0xC000 => OpCode::RAND { s: get_n2(val), nn: get_n34(val) },
         0xD000 => OpCode::DRAW { s: get_n2(val), t: get_n3(val), n: get_n4(val) },
+        0xE000 => {
+            let s = get_n2(val);
+            match get_n34(val) {
+                0x009E => OpCode::SKP {s : s},
+                0x00A1 => OpCode::SKNP {s : s},
+                _ => OpCode::SYS{addr: get_n234(val)},
+            }
+        },
         0xF000 => {
             let n34 = get_n34(val);
             let reg = get_n2(val);
             match n34 {
-                0x0007 => OpCode::MOVED {t: reg},
-                0x000A => OpCode::KEYD {t: reg},
+                0x0007 => OpCode::MOVED {s: reg},
+                0x000A => OpCode::KEYD {s: reg},
                 0x0015 => OpCode::LOADD {s: reg},
                 0x0018 => OpCode::LOADS {s: reg},
                 0x001E => OpCode::ADDI {s: reg},
@@ -94,12 +104,12 @@ pub fn decode(val: u16) -> OpCode {
 
 #[inline]
 fn get_n2(opcode : u16) -> u8 {
-    (opcode >> 8 & 0x000F) as u8
+    ((opcode & 0x0F00) >> 8) as u8
 }
 
 #[inline]
 fn get_n3(opcode : u16) -> u8 {
-    (opcode >> 4 & 0x000F) as u8
+    ((opcode & 0x00F0) >> 4) as u8
 }
 
 #[inline]

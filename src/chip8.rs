@@ -84,7 +84,10 @@ impl Chip8 {
         let opcode = opcode::decode(opcode_raw);
         println!("Step {:?}: Fetched opcode {:?} at PC 0x{:X}", self.step, &opcode, self.pc);
 
-        self.pc += self.execute_opcode(opcode);
+        // each instruction is two bytes; increment before execution of opcode
+        // which allows overwrite of the pc in opcode execution
+        self.pc += 2;
+        self.execute_opcode(opcode);
 
         if self.delay_timer > 0 {
             self.delay_timer -= 1;
@@ -100,7 +103,7 @@ impl Chip8 {
         p1 | p2
     }
 
-    fn execute_opcode(&mut self, opcode: OpCode) -> u16 {
+    fn execute_opcode(&mut self, opcode: OpCode) {
         match opcode {
             OpCode::SYS { addr } => self.sys(addr),
             OpCode::CLR => self.clr(),
@@ -109,6 +112,7 @@ impl Chip8 {
             OpCode::CALL { addr } => self.call(addr),
             OpCode::SKE { s, nn } => self.ske(s, nn),
             OpCode::SKNE { s, nn } => self.skne(s, nn),
+            OpCode::SKRE { s, t } => self.skre(s, t),
             OpCode::LOAD { s, nn } => self.load(s, nn),
             OpCode::ADD { s, nn } => self.add(s, nn),
             OpCode::MOVE { s, t } => self.move_reg(s, t),
@@ -124,6 +128,8 @@ impl Chip8 {
             OpCode::JUMPI { addr } => self.jumpi(addr),
             OpCode::RAND { s, nn } => self.rand(s, nn),
             OpCode::DRAW { s, t, n } => self.draw(s, t, n),
+            OpCode::SKP { s } => self.skp(s),
+            OpCode::SKNP { s } => self.sknp(s),
             OpCode::MOVED { s } => self.moved(s),
             OpCode::KEYD { s } => self.keyd(s),
             OpCode::LOADD { s } => self.loadd(s),
@@ -133,92 +139,84 @@ impl Chip8 {
             OpCode::BCD { s } => self.bcd(s),
             OpCode::STOR { s } => self.stor(s),
             OpCode::READ { s } => self.read(s),
-            _ => panic!("opcode {:?} not implemented yet", opcode),
-        }
+            //_ => panic!("opcode {:?} not implemented yet", opcode),
+        };
     }
 
-    fn sys(&self, addr: u16) -> u16 {
+    fn sys(&self, addr: u16)  {
         println!("Ignoring opcode SYS to addr {:?}", addr);
-        DEFAULT_PC_INC
     }
 
-    fn clr(&mut self) -> u16 {
+    fn clr(&mut self)  {
         println!("Clearing screen");
         self.screen_buffer.clear();
         self.screen.clear();
-        DEFAULT_PC_INC
     }
 
-    fn ret(&mut self) -> u16 {
+    fn ret(&mut self)  {
         self.sp -= 1;
         self.pc = self.stack[self.sp as usize];
-        DEFAULT_PC_INC
     }
 
-    fn jump(&mut self, addr: u16) -> u16 {
+    fn jump(&mut self, addr: u16)  {
         self.pc = addr;
-        0
     }
 
-    fn call(&mut self, addr: u16) -> u16 {
+    fn call(&mut self, addr: u16)  {
         self.stack[self.sp as usize] = self.pc;
         self.sp += 1;
         self.pc = addr;
-        0
     }
 
-    fn ske(&mut self, s: u8, nn: u8) -> u16 {
+    fn ske(&mut self, s: u8, nn: u8)  {
         if self.regs[s as usize] == nn {
             self.pc += 2;
         }
-        DEFAULT_PC_INC
     }
 
-    fn skne(&mut self, s: u8, nn: u8) -> u16 {
+    fn skne(&mut self, s: u8, nn: u8)  {
         if self.regs[s as usize] != nn {
             self.pc += 2;
         }
-        DEFAULT_PC_INC
     }
 
-    fn skrne(&mut self, s: u8, t: u8) -> u16 {
+    fn skre(&mut self, s: u8, t: u8)  {
+        if self.regs[s as usize] == self.regs[t as usize] {
+            self.pc += 2;
+        }
+    }
+
+    fn skrne(&mut self, s: u8, t: u8)  {
         if self.regs[s as usize] != self.regs[t as usize] {
             self.pc += 2;
         }
-        DEFAULT_PC_INC
     }
 
-    fn load(&mut self, s: u8, nn: u8) -> u16 {
+    fn load(&mut self, s: u8, nn: u8)  {
         self.regs[s as usize] = nn;
-        DEFAULT_PC_INC
     }
 
-    fn add(&mut self, s: u8, nn: u8) -> u16 {
+    fn add(&mut self, s: u8, nn: u8)  {
         self.regs[s as usize] = self.regs[s as usize].wrapping_add(nn);
-        DEFAULT_PC_INC
     }
 
-    fn move_reg(&mut self, s: u8, t: u8) -> u16 {
+    fn move_reg(&mut self, s: u8, t: u8)  {
         self.regs[s as usize] = self.regs[t as usize];
-        DEFAULT_PC_INC
     }
 
-    fn or(&mut self, s: u8, t: u8) -> u16 {
+    fn or(&mut self, s: u8, t: u8)  {
         self.regs[s as usize] = self.regs[s as usize] | self.regs[t as usize];
-        DEFAULT_PC_INC
     }
 
-    fn and(&mut self, s: u8, t: u8) -> u16 {
+    fn and(&mut self, s: u8, t: u8)  {
         self.regs[s as usize] = self.regs[s as usize] & self.regs[t as usize];
-        DEFAULT_PC_INC
     }
 
-    fn xor(&mut self, s: u8, t: u8) -> u16 {
+    fn xor(&mut self, s: u8, t: u8)  {
         self.regs[s as usize] = self.regs[s as usize] ^ self.regs[t as usize];
-        DEFAULT_PC_INC
     }
 
-    fn addr(&mut self, s: u8, t: u8) -> u16 {
+    fn addr(&mut self, s: u8, t: u8)  {
         let s_val = self.regs[s as usize];
         let t_val = self.regs[t as usize];
         // first perform a checked addition
@@ -234,10 +232,9 @@ impl Chip8 {
                 s_val.wrapping_add(t_val)
             }
         };
-        DEFAULT_PC_INC
     }
 
-    fn sub(&mut self, s: u8, t: u8) -> u16 {
+    fn sub(&mut self, s: u8, t: u8)  {
         let s_val = self.regs[s as usize];
         let t_val = self.regs[t as usize];
         // first perform a checked addition
@@ -253,41 +250,35 @@ impl Chip8 {
                 s_val.wrapping_sub(t_val)
             }
         };
-        DEFAULT_PC_INC
     }
 
-    fn shr(&mut self, s: u8) -> u16 {
+    fn shr(&mut self, s: u8)  {
         let s_val = self.regs[s as usize];
         self.regs[REG_F] = s_val & 0x1;
         self.regs[s as usize] >>= 1;
-        DEFAULT_PC_INC
     }
 
-    fn shl(&mut self, s: u8) -> u16 {
+    fn shl(&mut self, s: u8)  {
         let s_val = self.regs[s as usize];
         self.regs[REG_F] = s_val >> 7;;
         self.regs[s as usize] <<= 1;
-        DEFAULT_PC_INC
     }
 
-    fn loadi(&mut self, addr: u16) -> u16 {
+    fn loadi(&mut self, addr: u16)  {
         self.i_reg = addr;
-        DEFAULT_PC_INC
     }
 
-    fn jumpi(&mut self, addr: u16) -> u16 {
+    fn jumpi(&mut self, addr: u16)  {
         self.pc = self.regs[0] as u16 + addr;
-        0
     }
 
-    fn rand(&mut self, t: u8, nn: u8) -> u16 {
+    fn rand(&mut self, t: u8, nn: u8)  {
         let between = Range::new(0, nn);
         let mut rng = rand::thread_rng();
         self.regs[t as usize] = between.ind_sample(&mut rng);
-        DEFAULT_PC_INC
     }
 
-    fn draw(&mut self, s: u8, t: u8, n: u8) -> u16 {
+    fn draw(&mut self, s: u8, t: u8, n: u8)  {
         let sx = self.regs[s as usize];
         let sy = self.regs[t as usize];
         //println!("Base Sprite at {:?}, {:?}...", sx, sy);
@@ -310,57 +301,57 @@ impl Chip8 {
             }
         }
         self.screen.draw(self.screen_buffer.clone());
-        DEFAULT_PC_INC
     }
 
-    fn moved(&mut self, t: u8) -> u16 {
+    fn skp(&mut self, s: u8)  {
+        //TODO: implement
+    }
+
+    fn sknp(&mut self, s: u8)  {
+        //TODO: implement
+        self.pc += 2;
+    }
+
+    fn moved(&mut self, t: u8)  {
         self.regs[t as usize] = self.delay_timer;
-        DEFAULT_PC_INC
     }
 
-    fn keyd(&mut self, t: u8) -> u16 {
+    fn keyd(&mut self, t: u8)  {
         unimplemented!()
     }
 
-    fn loadd(&mut self, s: u8) -> u16 {
+    fn loadd(&mut self, s: u8)  {
         self.delay_timer = self.regs[s as usize];
-        DEFAULT_PC_INC
     }
 
-    fn loads(&mut self, s: u8) -> u16 {
+    fn loads(&mut self, s: u8)  {
         self.sound_timer = self.regs[s as usize];
-        DEFAULT_PC_INC
     }
 
-    fn addi(&mut self, s: u8) -> u16 {
-        self.i_reg = self.i_reg.wrapping_add(self.regs[s as usize] as u16);
-        DEFAULT_PC_INC
+    fn addi(&mut self, s: u8)  {
+        self.i_reg = self.i_reg.wrapping_add(self.regs[s as usize] as u16) & 0xFFF;
     }
 
-    fn ldspr(&mut self, s: u8) -> u16 {
-        self.i_reg = self.regs[s as usize] as u16 * 5;
-        DEFAULT_PC_INC
+    fn ldspr(&mut self, s: u8)  {
+        self.i_reg = (self.regs[s as usize] as u16 * 5) & 0xFFF;
     }
 
-    fn bcd(&mut self, s: u8) -> u16 {
+    fn bcd(&mut self, s: u8)  {
         let vx = self.regs[s as usize];
         self.memory.set(self.i_reg, (vx / 100) as u8);
         self.memory.set(self.i_reg + 1, ((vx / 10) % 10) as u8);
         self.memory.set(self.i_reg + 2, ((vx % 100) % 10) as u8);
-        DEFAULT_PC_INC
     }
 
-    fn stor(&mut self, s: u8) -> u16 {
+    fn stor(&mut self, s: u8)  {
         for i in 0..self.regs[s as usize] as u16 {
             self.memory.set(self.i_reg + i, self.regs[i as usize]);
         }
-        DEFAULT_PC_INC
     }
 
-    fn read(&mut self, s: u8) -> u16 {
+    fn read(&mut self, s: u8)  {
         for i in 0..self.regs[s as usize] as u16 {
             self.regs[i as usize] = self.memory.get(self.i_reg + i);
         }
-        DEFAULT_PC_INC
     }
 }
