@@ -98,7 +98,7 @@ impl Chip8 {
 
         // each instruction is two bytes; increment before execution of opcode
         // which allows overwrite of the pc in opcode execution
-        self.pc += 2;
+        self.pc += DEFAULT_PC_INC;
         self.execute_opcode(opcode);
 
         self.keys = self.screen.poll_keys();
@@ -171,7 +171,6 @@ impl Chip8 {
     }
 
     fn clr(&mut self) {
-        println!("Clearing screen");
         self.screen_buffer.clear();
         self.redraw = true;
     }
@@ -193,25 +192,25 @@ impl Chip8 {
 
     fn ske(&mut self, s: u8, nn: u8) {
         if self.regs[s as usize] == nn {
-            self.pc += 2;
+            self.pc += DEFAULT_PC_INC;
         }
     }
 
     fn skne(&mut self, s: u8, nn: u8) {
         if self.regs[s as usize] != nn {
-            self.pc += 2;
+            self.pc += DEFAULT_PC_INC;
         }
     }
 
     fn skre(&mut self, s: u8, t: u8) {
         if self.regs[s as usize] == self.regs[t as usize] {
-            self.pc += 2;
+            self.pc += DEFAULT_PC_INC;
         }
     }
 
     fn skrne(&mut self, s: u8, t: u8) {
         if self.regs[s as usize] != self.regs[t as usize] {
-            self.pc += 2;
+            self.pc += DEFAULT_PC_INC;
         }
     }
 
@@ -329,14 +328,14 @@ impl Chip8 {
     fn skp(&mut self, s: u8) {
         let key = self.regs[s as usize];
         if self.keys.get(key) {
-            self.pc += 2;
+            self.pc += DEFAULT_PC_INC;
         }
     }
 
     fn sknp(&mut self, s: u8) {
         let key = self.regs[s as usize];
         if !self.keys.get(key) {
-            self.pc += 2;
+            self.pc += DEFAULT_PC_INC;
         }
     }
 
@@ -345,7 +344,9 @@ impl Chip8 {
     }
 
     fn keyd(&mut self, t: u8) {
-        unimplemented!()
+        let key = self.regs[t as usize];
+        println!("Waiting for specific key press: {:?}", key);
+        self.screen.wait_for_key_blocking(key);
     }
 
     fn loadd(&mut self, s: u8) {

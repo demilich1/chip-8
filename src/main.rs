@@ -13,7 +13,7 @@ use chip8::Chip8;
 use rom::Rom;
 
 fn main() {
-    let rom = Rom::load("./roms/VERS");
+    let rom = Rom::load("./roms/GUESS");
 
     let mut chip8 = Chip8::new();
     chip8.init();

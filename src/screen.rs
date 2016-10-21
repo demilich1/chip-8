@@ -5,17 +5,12 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::render::Renderer;
 use sdl2::rect::Rect;
-use sdl2::video::Window;
 use sdl2::EventPump;
+
+use std::{thread, time};
 
 use screen_buffer::ScreenBuffer;
 use keys::Keys;
-
-use std::thread;
-
-use std::sync::mpsc::channel;
-use std::sync::mpsc::{Sender, TryRecvError};
-
 
 pub const PIXEL_SIZE: u16 = 8;
 
@@ -39,39 +34,6 @@ impl Screen {
             .build()
             .unwrap();
 
-        // let mut renderer = window.renderer().build().unwrap();
-        //
-        // renderer.set_draw_color(Color::RGB(15, 15, 15));
-        // renderer.clear();
-        // renderer.present();
-        //
-        //
-        //
-        //
-        // let mut event_pump = sdl_context.event_pump().unwrap();
-        //
-        // 'running: loop {
-        // match rx.try_recv() {
-        // Ok(signal) => Screen::process_signal(&mut renderer, signal),
-        // Err(err) => {
-        // match err {
-        // TryRecvError::Empty => (),
-        // TryRecvError::Disconnected => {
-        // panic!("An error occured while receiving screen signals: {:?}", err)
-        // }
-        // }
-        // }
-        // }
-        // for event in event_pump.poll_iter() {
-        // match event {
-        // Event::Quit { .. } |
-        // Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'running,
-        // _ => {}
-        // }
-        // }
-        // The rest of the game loop goes here...
-        // }
-        //
         let renderer = window.renderer().build().unwrap();
         let event_pump = sdl_context.event_pump().unwrap();
 
@@ -84,7 +46,6 @@ impl Screen {
     }
 
     pub fn draw(&mut self, buffer: &ScreenBuffer) {
-        // let renderer = window.renderer().build().unwrap();
         self.renderer.set_draw_color(Color::RGB(15, 15, 15));
         self.renderer.clear();
         self.renderer.set_draw_color(Color::RGB(255, 255, 255));
@@ -96,15 +57,9 @@ impl Screen {
                 let x = (px * PIXEL_SIZE) as i32;
                 let y = (py * PIXEL_SIZE) as i32;
                 let rect = Rect::new(x, y, PIXEL_SIZE as u32, PIXEL_SIZE as u32);
-                self.renderer.fill_rect(rect);
+                self.renderer.fill_rect(rect).expect("Error filling rect");
             }
         }
-        self.renderer.present();
-    }
-
-    pub fn clear(&mut self) {
-        self.renderer.set_draw_color(Color::RGB(15, 15, 15));
-        self.renderer.clear();
         self.renderer.present();
     }
 
@@ -156,6 +111,20 @@ impl Screen {
         self.quit = quit;
         self.keys = keys;
         self.keys
+    }
+
+    pub fn wait_for_key_blocking(&mut self, key: u8) {
+        let sleep_duration = time::Duration::from_millis(100);
+        loop {
+            let keys = self.poll_keys();
+            if self.quit || keys.get(key) {
+                // quit flag is set or key was pressed, break loop and return from fn
+                break;
+            } else {
+                // key was not pressed, sleep and poll again
+                thread::sleep(sleep_duration);
+            }
+        }
     }
 
     pub fn quit(&self) -> bool {

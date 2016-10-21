@@ -34,11 +34,6 @@ impl ScreenBuffer {
         result
     }
 
-    pub fn set_pixel(&mut self, x: u16, y: u16) {
-        let index = self.index(x, y);
-        self.pixels[index] = true
-    }
-
     pub fn get_pixel(&self, x: u16, y: u16) -> bool {
         let index = self.index(x, y);
         self.pixels[index]
