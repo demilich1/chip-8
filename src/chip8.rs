@@ -87,7 +87,7 @@ impl Chip8 {
         self.memory.load_data(&rom_data, ROM_START_OFFSET);
     }
 
-    pub fn run_cycle(&mut self) {
+    pub fn run_cycle(&mut self) -> bool {
         self.step += 1;
         let opcode_raw = self.fetch_opcode();
         let opcode = opcode::decode(opcode_raw);
@@ -116,7 +116,10 @@ impl Chip8 {
         }
 
         if self.screen.quit() {
-            panic!("Quitting...");
+            println!("CHIP-8 shutting down...");
+            false
+        } else {
+            true
         }
     }
 

@@ -13,7 +13,7 @@ use chip8::Chip8;
 use rom::Rom;
 
 fn main() {
-    let rom = Rom::load("./roms/GUESS");
+    let rom = Rom::load("./roms/PONG");
 
     let mut chip8 = Chip8::new();
     chip8.init();
@@ -21,7 +21,10 @@ fn main() {
     chip8.load_rom(rom);
 
     loop {
-        chip8.run_cycle();
-        std::thread::sleep(std::time::Duration::from_millis(4));
+        if chip8.run_cycle() {
+            std::thread::sleep(std::time::Duration::from_millis(4));
+        } else {
+            break;
+        }
     }
 }
