@@ -1,14 +1,12 @@
-use rand;
-use rand::distributions::{IndependentSample, Range};
+use rand::prelude::*;
 
-use rom::Rom;
-use mem::Memory;
-use screen::Screen;
-use screen_buffer::ScreenBuffer;
-use keys::Keys;
+use super::keys::Keys;
+use super::mem::Memory;
+use super::rom::Rom;
+use super::screen_buffer::ScreenBuffer;
 
-use opcode;
-use opcode::OpCode;
+use super::opcode;
+use super::opcode::OpCode;
 
 pub const SCREEN_WIDTH: u16 = 64;
 pub const SCREEN_HEIGHT: u16 = 32;
@@ -42,13 +40,12 @@ static FONT_DATA: &'static [u8] =
 ];
 
 pub struct Chip8 {
-    screen: Screen,
     memory: Memory,
     regs: [u8; REGISTERS],
     stack: [u16; STACK_SIZE],
     screen_buffer: ScreenBuffer,
-    sp: u16, // stack pointer
-    pc: u16, // program counter
+    sp: u16,    // stack pointer
+    pc: u16,    // program counter
     i_reg: u16, // index register
     keys: Keys,
     redraw: bool,
@@ -60,7 +57,6 @@ pub struct Chip8 {
 impl Chip8 {
     pub fn new() -> Self {
         Chip8 {
-            screen: Screen::new(SCREEN_WIDTH, SCREEN_HEIGHT),
             memory: Memory::new(),
             regs: [0; REGISTERS],
             stack: [0; STACK_SIZE],
@@ -79,7 +75,7 @@ impl Chip8 {
     pub fn init(&mut self) {
         self.pc = ROM_START_OFFSET;
         self.memory.load_data(FONT_DATA, FONT_START_OFFSET);
-        println!("CHIP-8 init", );
+        println!("CHIP-8 init",);
     }
 
     pub fn load_rom(&mut self, rom: Rom) {
@@ -87,7 +83,19 @@ impl Chip8 {
         self.memory.load_data(&rom_data, ROM_START_OFFSET);
     }
 
-    pub fn run_cycle(&mut self) -> bool {
+    pub fn screen_buffer(&self) -> &ScreenBuffer {
+        &self.screen_buffer
+    }
+
+    pub fn set_key(&mut self, index: u8) {
+        self.keys.set(index);
+    }
+
+    pub fn unset_key(&mut self, index: u8) {
+        self.keys.unset(index);
+    }
+
+    pub fn run_cycle(&mut self) {
         self.step += 1;
         let opcode_raw = self.fetch_opcode();
         let opcode = opcode::decode(opcode_raw);
@@ -101,10 +109,10 @@ impl Chip8 {
         self.pc += DEFAULT_PC_INC;
         self.execute_opcode(opcode);
 
-        self.keys = self.screen.poll_keys();
+        //self.keys = self.screen.poll_keys();
 
         if self.redraw {
-            self.screen.draw(&self.screen_buffer);
+            //self.screen.draw(&self.screen_buffer);
             self.redraw = false;
         }
 
@@ -113,13 +121,6 @@ impl Chip8 {
         }
         if self.sound_timer > 0 {
             self.sound_timer -= 1;
-        }
-
-        if self.screen.quit() {
-            println!("CHIP-8 shutting down...");
-            false
-        } else {
-            true
         }
     }
 
@@ -285,7 +286,7 @@ impl Chip8 {
 
     fn shl(&mut self, s: u8) {
         let s_val = self.regs[s as usize];
-        self.regs[REG_F] = s_val >> 7;;
+        self.regs[REG_F] = s_val >> 7;
         self.regs[s as usize] <<= 1;
     }
 
@@ -298,9 +299,9 @@ impl Chip8 {
     }
 
     fn rand(&mut self, t: u8, nn: u8) {
-        let between = Range::new(0, nn);
         let mut rng = rand::thread_rng();
-        self.regs[t as usize] = between.ind_sample(&mut rng);
+        let sample = rng.gen_range(0, nn);
+        self.regs[t as usize] = sample;
     }
 
     fn draw(&mut self, s: u8, t: u8, n: u8) {
@@ -349,7 +350,7 @@ impl Chip8 {
     fn keyd(&mut self, t: u8) {
         let key = self.regs[t as usize];
         println!("Waiting for specific key press: {:?}", key);
-        self.screen.wait_for_key_blocking(key);
+        //self.screen.wait_for_key_blocking(key);
     }
 
     fn loadd(&mut self, s: u8) {

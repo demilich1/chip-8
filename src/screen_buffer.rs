@@ -10,7 +10,8 @@ impl ScreenBuffer {
         ScreenBuffer {
             width: width,
             height: height,
-            pixels: vec![false; size] }
+            pixels: vec![false; size],
+        }
     }
 
     pub fn width(&self) -> u16 {

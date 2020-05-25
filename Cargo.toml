@@ -2,7 +2,8 @@
 name = "chip_8"
 version = "0.1.0"
 authors = ["demilich <xnemesisx@gmx.net>"]
+edition = "2018"
 
 [dependencies]
-sdl2 = "0.24"
-rand = "0.3"
+ggez = "0.5"
+rand = "0.7"
