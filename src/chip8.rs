@@ -87,6 +87,10 @@ impl Chip8 {
         &self.screen_buffer
     }
 
+    pub fn redraw(&self) -> bool {
+        self.redraw
+    }
+
     pub fn set_key(&mut self, index: u8) {
         self.keys.set(index);
     }
@@ -96,6 +100,10 @@ impl Chip8 {
     }
 
     pub fn run_cycle(&mut self) {
+        if self.redraw {
+            self.redraw = false;
+        }
+
         self.step += 1;
         let opcode_raw = self.fetch_opcode();
         let opcode = opcode::decode(opcode_raw);
@@ -108,13 +116,6 @@ impl Chip8 {
         // which allows overwrite of the pc in opcode execution
         self.pc += DEFAULT_PC_INC;
         self.execute_opcode(opcode);
-
-        //self.keys = self.screen.poll_keys();
-
-        if self.redraw {
-            //self.screen.draw(&self.screen_buffer);
-            self.redraw = false;
-        }
 
         if self.delay_timer > 0 {
             self.delay_timer -= 1;

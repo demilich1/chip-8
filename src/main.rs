@@ -34,6 +34,7 @@ fn main() -> GameResult {
 }
 
 struct MainWindow {
+    redraw: bool,
     chip8: Chip8,
     width: u16,
     height: u16,
@@ -46,13 +47,14 @@ impl MainWindow {
         let scale = 10;
         let width = chip8::SCREEN_WIDTH * scale;
         let height = chip8::SCREEN_HEIGHT * scale;
-        let rom = Rom::load("./roms/PONG2");
+        let rom = Rom::load("./roms/PONG");
 
         let mut chip8 = Chip8::new();
         chip8.init();
         chip8.load_rom(rom);
 
         let state = MainWindow {
+            redraw: true,
             chip8,
             width,
             height,
@@ -67,12 +69,20 @@ impl EventHandler for MainWindow {
     fn update(&mut self, _ctx: &mut Context) -> GameResult<()> {
         for _ in 0..CYCLES_PER_FRAME {
             self.chip8.run_cycle();
+            if self.chip8.redraw() {
+                self.redraw = true;
+            }
         }
 
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
+        if !self.redraw {
+            return Ok(());
+        }
+        self.redraw = false;
+
         graphics::clear(ctx, graphics::BLACK);
         for y in 0..chip8::SCREEN_HEIGHT {
             for x in 0..chip8::SCREEN_WIDTH {
