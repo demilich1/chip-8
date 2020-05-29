@@ -378,13 +378,13 @@ impl Chip8 {
     }
 
     fn stor(&mut self, s: u8) {
-        for i in 0..s as u16 {
+        for i in 0..=s as u16 {
             self.memory.set(self.i_reg + i, self.regs[i as usize]);
         }
     }
 
     fn read(&mut self, s: u8) {
-        for i in 0..s as u16 {
+        for i in 0..=s as u16 {
             self.regs[i as usize] = self.memory.get(self.i_reg + i);
         }
     }

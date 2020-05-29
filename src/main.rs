@@ -47,7 +47,7 @@ impl MainWindow {
         let scale = 10;
         let width = chip8::SCREEN_WIDTH * scale;
         let height = chip8::SCREEN_HEIGHT * scale;
-        let rom = Rom::load("./roms/PONG");
+        let rom = Rom::load("./roms/PONG2");
 
         let mut chip8 = Chip8::new();
         chip8.init();
